@@ -7,7 +7,6 @@
 <title>매크로 지표</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
-/* 3번 스타일: 소프트 네온 카드 & 부드러운 인터랙션 컨셉 */
 :root{
   --bg:#070b10;
   --panel:#101722;
@@ -159,7 +158,7 @@ details.info summary::-webkit-details-marker{display:none}
   <button data-t="kth" aria-pressed="false">테마 TOP10</button>
 </nav>
 
-<div class="ctl" id="gctl" style="margin:0 0 14px">
+<div class="ctl" id="gctl" style="margin:0 0 14px" hidden>
   <div class="seg"><button id="mab" aria-pressed="true">이동평균선</button></div>
   <div class="seg" id="seg"><button data-r="1">1년</button><button data-r="3" aria-pressed="true">3년</button><button data-r="5">5년</button></div>
 </div>
@@ -224,22 +223,27 @@ const SECTIONS=[
 ["소비",["retail"],[
  ["소매판매",["retail","core_retail"],"",{d:"소매 판매 지표",w:"중순 발표",n:"경기 확장 신호",s:"명목값임",c:"자동차 제외 등"}]]],
 ["성장",["gdp","gdpnow"],[
- ["GDP 성장률",["gdp","gdpnow"],"",{d:"실질 성장률",w:"분기별 발표",n:"경제 성장 속도",s:"속보치 역할",c:"추정치 오차"}]]]
+ ["GDP 성장률",["gdp","gdpnow"],"",{d:"실질 성장률",w:"분기별 발표",n:"경제 성장 속도",s:"속보치 역할",c:"추정치 오차"}],
+ ["ISM 제조업 PMI",["pmi"],"",{d:"제조업 경기 선행지표",w:"매월 첫 영업일",n:"50 이상 확장, 미만 위축",s:"경기 사이클 판단 핵심",c:"체감 경기와 괴리 가능"},{l:[["ISM 공식 사이트","https://www.ismworld.org/"]]}]
+]]
 ];
+
+// 원자재 탭: 금/은 처럼 스케일이 다른 경우 y축을 분리하기 위한 설정 (yAxisID: y2)
 const SECTIONS2=[
 ["귀금속",["gold","silver"],[
- ["금·은",["gold","silver"],"",{d:"안전자산 및 산업용 금속",n:"실질금리와 반대",s:"위험회피 신호",c:"구조적 수요"}]]],
+ ["금·은",["gold","silver"],"",{d:"안전자산 및 산업용 금속",n:"실질금리와 반대",s:"위험회피 신호",c:"구조적 수요"},{y2:["silver"]}]]],
 ["산업금속",["copper","nickel"],[
- ["구리·니켈",["copper","nickel"],"",{d:"산업 경기 선행지표",n:"수요 반영",s:"괴리 발생 시 점검",c:"공급 요인"}]]],
+ ["구리·니켈",["copper","nickel"],"",{d:"산업 경기 선행지표",n:"수요 반영",s:"괴리 발생 시 점검",c:"공급 요인"},{y2:["nickel"]}]]],
 ["에너지",["wti","brent","dubai","natgas"],[
- ["원유·천연가스",["wti","brent","dubai","natgas"],"",{d:"에너지 가격",n:"물가 부담",s:"지정학적 이슈",c:"감산 등 민감"}]]]
+ ["원유·천연가스",["wti","brent","dubai","natgas"],"",{d:"에너지 가격",n:"물가 부담",s:"지정학적 이슈",c:"감산 등 민감"},{y2:["natgas"]}]]]
 ];
+
 const SECTIONS3=[
 ["연준 유동성",["net_liq"],[
  ["순유동성",["net_liq"],"",{d:"총자산-TGA-역레포",n:"위험자산 우호도",s:"지수 비교",c:"근사치 계산"}]]]
 ];
 
-let D,range=3;const charts=[],opened=new Set(),openedC=new Set();
+let D,range=3;const charts=[],opened=new Set();
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const fmt=(v,u)=>v.toLocaleString("ko-KR",{maximumFractionDigits:2})+(u==="%"?"%":" "+u);
 const cutoff=()=>{const d=new Date();d.setFullYear(d.getFullYear()-range);return d.toISOString().slice(0,10)};
@@ -250,26 +254,35 @@ let showMA=true;
 function ma(p,n){const o=[];let s=0;for(let i=0;i<p.length;i++){s+=p[i][1];if(i>=n)s-=p[i-n][1];if(i>=n-1)o.push([p[i][0],s/n])}return o}
 const maOf=keys=>showMA&&keys.length===1?MAS[MAMODE[keys[0]]]:null;
 
-function draw(cv,keys,type){
+// Dual-axis (이중 축) 및 캔버스 렌더링 지원 함수
+function draw(cv,keys,type,opts={}){
   const co=cutoff(),labs=new Set(),ds=[];
+  const hasY2 = opts.y2 && opts.y2.length > 0;
   keys.forEach((k,i)=>{const x=D.series[k];if(!x)return;
     const m=new Map(x.points.filter(p=>p[0]>=co));m.forEach((_,d)=>labs.add(d));
-    ds.push({label:x.name,m,color:PAL[i]||"#33d1b6",w:1.8});
-    (maOf(keys)||[]).forEach(([n,nm,c])=>ds.push({label:nm,m:new Map(ma(x.points,n).filter(p=>p[0]>=co)),color:c,w:1.3,line:1}))});
+    const isY2 = hasY2 && opts.y2.includes(k);
+    ds.push({label:x.name,m,color:PAL[i]||"#33d1b6",w:1.8,yAxisID:isY2?"y1":"y"});
+    if(!isY2){
+      (maOf(keys)||[]).forEach(([n,nm,c])=>ds.push({label:nm,m:new Map(ma(x.points,n).filter(p=>p[0]>=co)),color:c,w:1.3,line:1,yAxisID:"y"}));
+    }
+  });
   const L=[...labs].sort();
   charts.push(new Chart(cv,{type:type||"line",
     data:{labels:L,datasets:ds.map(d=>({...(d.line?{type:"line"}:{}),label:d.label,data:L.map(l=>d.m.has(l)?d.m.get(l):null),
-      borderColor:d.color,backgroundColor:d.color,borderWidth:d.w,pointRadius:0,spanGaps:true}))},
+      borderColor:d.color,backgroundColor:d.color,borderWidth:d.w,pointRadius:0,spanGaps:true,yAxisID:d.yAxisID}))},
     options:{maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
-      plugins:{legend:{display:false}},
+      plugins:{legend:{display:true,labels:{color:css("--mute"),boxWidth:12}}},
       scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,color:css("--mute")}},
-              y:{grid:{color:css("--line")},ticks:{color:css("--mute")}}}}}));
+              y:{type:"linear",display:true,position:"left",grid:{color:css("--line")},ticks:{color:css("--mute")}},
+              ...(hasY2?{y1:{type:"linear",display:true,position:"right",grid:{display:false},ticks:{color:css("--mute")}}}:{})
+      }}}));
 }
-const paint=(el,blocks)=>el.querySelectorAll("canvas").forEach(cv=>{const b=blocks[+cv.dataset.i];draw(cv,b[1],b[2])});
+
+const paint=(el,blocks)=>el.querySelectorAll("canvas").forEach(cv=>{const b=blocks[+cv.dataset.i];draw(cv,b[1],b[2],b[4]||{})});
 const LAB=[["d","정의"],["w","발표 시기"],["n","핵심 포인트"],["s","투자 활용"],["c","주의할 점"]];
 
 function mk(id,secs,opened){
-  const root=document.getElementById(id);root.innerHTML="";
+  const root=document.getElementById(id);if(!root)return;root.innerHTML="";
   secs.forEach(([sec,head,blocks],si)=>{
     const d=document.createElement("details");d.className="sec";d.open=opened.has(si);
     const sm=head.map(k=>{const x=D.series[k];if(!x)return"";const l=x.points[x.points.length-1];
@@ -313,25 +326,57 @@ function load(){return Promise.all([jf("data.json"),jf("market.json").catch(()=>
   ["upd2","upd3"].forEach(k=>{const el=document.getElementById(k);if(el)el.textContent=t});
   build();
   renderCycle();
+  renderProxy();
 }).catch(()=>{
   ["upd","cupd"].forEach(k=>{const el=document.getElementById(k);if(el)el.textContent="데이터를 불러오지 못했습니다."});
 })}
 
-// 사이클 탭 렌더링 함수
+// 피델리티 경기 사이클 모델 로직 복구
 function renderCycle(){
   const croot = document.getElementById("croot");
   if(!croot || !D || !D.series) return;
-  const keys = ["us10y", "usdkrw", "cpi", "nfp"];
-  croot.innerHTML = `<div class="panel"><h3>경기 사이클 주요 핵심 지표 요약</h3><div class="chips">` +
-    keys.map(k => {
-      const x = D.series[k];
-      if(!x) return "";
-      const l = x.points[x.points.length-1];
-      return `<span class="chip"><i></i>${x.name} <b>${fmt(l[1], x.unit)}</b> (${l[0]})</span>`;
-    }).join("") + `</div></div>`;
+  const gdp = D.series.gdp?.points.slice(-1)[0]?.[1];
+  const cpi = D.series.cpi?.points.slice(-1)[0]?.[1];
+  const unemp = D.series.unemp?.points.slice(-1)[0]?.[1];
+  
+  // 간단한 국면 판단 로직
+  let phase = "회복기 (Recovery)", desc = "경제 성장률이 회복되고 물가는 안정되는 국면입니다. 주식과 채권이 유리합니다.";
+  let cls = "badge d";
+  if(gdp > 2.0 && cpi > 3.0) { phase = "과열기 (Overheating)"; desc = "성장과 물가가 모두 높은 국면입니다. 원자재와 실물 자산이 유리합니다."; cls = "badge h"; }
+  else if(gdp < 1.5 && cpi > 3.0) { phase = "스태그플레이션 / 후퇴기 (Stagflation / Slowdown)"; desc = "성장은 둔화되는데 물가가 높은 까다로운 국면입니다. 현금 및 방어주가 유리합니다."; cls = "badge h"; }
+  else if(gdp < 1.5 && cpi < 2.5) { phase = "침체기 (Recession)"; desc = "경기 침체 및 물가 하락 국면입니다. 안전자산(채권, 금) 매수가 유리합니다."; cls = "badge d"; }
+
+  croot.innerHTML = `
+    <div class="panel" style="margin-bottom:16px;">
+      <h3>피델리티 비즈니스 사이클 모델 추정</h3>
+      <div style="margin:12px 0;">
+        <span class="${cls}" style="font-size:16px; padding:6px 14px; margin-bottom:8px;">${phase}</span>
+        <p style="margin:8px 0 0; color:var(--mute);">${desc}</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>주요 경기 판단 지표</h3>
+      <div class="chips" style="margin-top:10px;">
+        <span class="chip"><i></i>실질 GDP <b>${gdp ?? "-"}%</b></span>
+        <span class="chip"><i></i>소비자물가(CPI) <b>${cpi ?? "-"}%</b></span>
+        <span class="chip"><i></i>실업률 <b>${unemp ?? "-"}%</b></span>
+      </div>
+    </div>
+  `;
 }
 
-// 탭 전환 이벤트 리스너 핵심 로직 복구
+function renderProxy(){
+  const fproxy = document.getElementById("fproxy");
+  if(!fproxy || !EXD || !EXD.series) return;
+  const keys = Object.keys(EXD.series);
+  fproxy.innerHTML = `<div class="chips">` + keys.map(k => {
+    const x = EXD.series[k];
+    const l = x.points[x.points.length-1];
+    return `<span class="chip"><i></i>${x.name} <b>${fmt(l[1], x.unit)}</b> (${l[0]})</span>`;
+  }).join("") + `</div>`;
+}
+
+// 탭 네비게이션 및 서브탭 이벤트 제어 복구
 const tabs=document.getElementById("tabs"),subtabs=document.getElementById("subtabs"),subtabs2=document.getElementById("subtabs2"),gctl=document.getElementById("gctl");
 tabs.addEventListener("click",e=>{
   const btn=e.target.closest("button");if(!btn)return;
@@ -368,7 +413,7 @@ document.getElementById("rload").addEventListener("click",()=>load());
 load();
 </script>
 
-<!-- 증시 테이블 및 캔들 차트(TradingView Lightweight Charts) 연동 스크립트 -->
+<!-- 미국장 및 한국장 캔들 차트 연동 스크립트 -->
 <script>(()=>{
 function stockTab(C){
 const $=id=>document.getElementById(id);let U;const chartsMap={};
