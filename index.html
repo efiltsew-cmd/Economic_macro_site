@@ -7,7 +7,7 @@
 <title>매크로 지표</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
-/* 3번 소프트 네온 테마 적용 스타일 */
+/* 3번 소프트 네온 테마 스타일 */
 :root{
   --bg:#070b10;
   --panel:#101722;
@@ -135,7 +135,7 @@ details.info summary::-webkit-details-marker{display:none}
 
 <nav class="subtabs" id="subtabs" hidden>
   <button data-t="sector" aria-pressed="true">섹터</button>
-  <button data-t="us" aria-pressed="false">테마 TOP10</button> <!-- 요청하신 대로 이름 변경 -->
+  <button data-t="us" aria-pressed="false">테마 TOP10</button>
   <button data-t="flow" aria-pressed="false">자금 흐름</button>
 </nav>
 
@@ -144,50 +144,49 @@ details.info summary::-webkit-details-marker{display:none}
   <button data-t="kth" aria-pressed="false">테마 TOP10</button>
 </nav>
 
-<div class="ctl" id="gctl" style="margin:0 0 14px" hidden>
+<div class="ctl" id="gctl" style="margin:0 0 14px">
   <div class="seg"><button id="mab" aria-pressed="true">이동평균선</button></div>
   <div class="seg" id="seg"><button data-r="1">1년</button><button data-r="3" aria-pressed="true">3년</button><button data-r="5">5년</button></div>
 </div>
+
+<section class="view" id="v-cycle">
+  <h1>경기 사이클</h1><p class="upd" id="cupd">불러오는 중…</p><div id="croot"></div>
+</section>
 
 <section class="view" id="v-macro" hidden>
   <header><div><h1>매크로 지표</h1><p class="upd" id="upd">불러오는 중…</p></div></header>
   <div id="root"></div>
 </section>
 
-<section class="view" id="v-cycle">
-  <h1>경기 사이클</h1><p class="upd" id="cupd">불러오는 중…</p><div id="croot"></div>
-</section>
-
-<section class="view" id="v-sector" hidden>
-  <h1>섹터</h1><p class="upd" id="supd">불러오는 중…</p><div id="sroot"></div>
-</section>
-
 <section class="view" id="v-comm" hidden>
   <h1>원자재</h1><p class="upd" id="upd2">불러오는 중…</p><div id="croot2"></div>
 </section>
 
+<!-- 미국 증시 뷰 컨테이너들 -->
+<section class="view" id="v-sector" hidden>
+  <h1>섹터</h1><p class="upd" id="supd">불러오는 중…</p><div id="sroot"></div>
+</section>
 <section class="view" id="v-us" hidden>
-  <h1>미국장</h1><p class="upd" id="upd4">불러오는 중…</p>
+  <h1>테마 TOP10</h1><p class="upd" id="upd4">불러오는 중…</p>
   <div class="ctl"><div class="seg" id="usr"><button data-n="21" aria-pressed="false">1개월</button><button data-n="63" aria-pressed="true">3개월</button><button data-n="126" aria-pressed="false">6개월</button><button data-n="260" aria-pressed="false">1년</button></div></div>
   <p class="sub" id="usnote"></p><div id="usroot"></div>
 </section>
+<section class="view" id="v-flow" hidden>
+  <h1>자금 흐름</h1><p class="upd" id="upd3">불러오는 중…</p>
+  <h2>자산군·섹터 자금 유입 추정</h2><div class="panel" id="fproxy"></div>
+  <h2>유동성·달러·머니마켓</h2><div id="froot"></div>
+</section>
 
+<!-- 한국 증시 뷰 컨테이너들 -->
 <section class="view" id="v-kflow" hidden>
   <h1>한국 수급</h1><p class="upd" id="upd6">불러오는 중…</p>
   <div class="ctl"><div class="seg" id="kfr"><button data-n="10" aria-pressed="false">10일</button><button data-n="20" aria-pressed="true">20일</button><button data-n="60" aria-pressed="false">60일</button></div></div>
   <p class="sub" id="kfnote"></p><div id="kfroot"></div>
 </section>
-
 <section class="view" id="v-kth" hidden>
   <h1>테마 TOP10</h1><p class="upd" id="upd5">불러오는 중…</p>
   <div class="ctl"><div class="seg" id="krr"><button data-n="21" aria-pressed="false">1개월</button><button data-n="63" aria-pressed="true">3개월</button><button data-n="126" aria-pressed="false">6개월</button><button data-n="260" aria-pressed="false">1년</button></div></div>
   <p class="sub" id="krnote"></p><div id="krroot"></div>
-</section>
-
-<section class="view" id="v-flow" hidden>
-  <h1>자금 흐름</h1><p class="upd" id="upd3">불러오는 중…</p>
-  <h2>자산군·섹터 자금 유입 추정</h2><div class="panel" id="fproxy"></div>
-  <h2>유동성·달러·머니마켓</h2><div id="froot"></div>
 </section>
 
 <p class="foot">※ 참고용 일반 정보이며 투자 권유가 아닙니다. 투자 판단과 책임은 본인에게 있습니다.</p>
@@ -233,7 +232,7 @@ const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim
 const fmt=(v,u)=>v.toLocaleString("ko-KR",{maximumFractionDigits:2})+(u==="%"?"%":" "+u);
 const cutoff=()=>{const d=new Date();d.setFullYear(d.getFullYear()-range);return d.toISOString().slice(0,10)};
 
-// 이동평균선 설정: 20일, 60일, 200일선으로 변경 반영
+// 요청하신 20일, 60일, 200일선 이동평균선 설정 반영
 const MAMODE={usdkrw:"d",jpykrw:"d",usdjpy:"d",nfp:"m3",unemp:"m3",kr3y:"d",gold:"d",silver:"d",copper:"d",wti:"d",brent:"d",dubai:"m3",nickel:"m3",natgas:"d",mu:"d",skh:"d",sec:"d",usd_idx:"d",net_liq:"w"};
 const PAL=["#33d1b6","#f59e0b","#c58bf2","#ef4444","#22c55e"];
 const MAS={
@@ -304,28 +303,16 @@ function renderFed(){
   const sec=document.querySelector("#root details.sec"),b=sec&&sec.querySelector(".body");if(!b)return;
   const old=b.querySelector(".fed");if(old)old.remove();
   const f=EXD&&EXD.fed;let h='<div class="blk fed"><h3>FOMC 성명·연준 발언과 뉘앙스</h3>';
-  if(!f||!f.statements||!f.statements.length){h+='<p class="sub">'+(EXD?'연준 사이트에서 성명을 가져오지 못했습니다. '+(EXD.errors||[]).slice(0,3).map(esc).join(' / '):'아직 데이터가 없습니다. GitHub Actions에서 extra-update를 한 번 실행해 주세요.')+'</p></div>';b.insertAdjacentHTML("afterbegin",h);return}
+  if(!f||!f.statements||!f.statements.length){h+='<p class="sub">'+(EXD?'연준 사이트에서 성명을 가져오지 못했습니다.':'아직 데이터가 없습니다.')+'</p></div>';b.insertAdjacentHTML("afterbegin",h);return}
   const L=f.statements[0],T=tone(L.score);
   h+=`<p><b>${L.date}</b> 최신 FOMC 성명 · 결정 <b>${L.decision}</b>${L.range?" · 목표범위 "+L.range+"%":""} · 뉘앙스 <span class="badge ${T[1]}">${T[0]} ${L.score>0?"+":""}${L.score}</span> <a class="lk" href="${L.url}" target="_blank" rel="noopener">원문 ↗</a></p>${gauge(L.score)}`;
-  if((L.hawk||[]).length||(L.dove||[]).length)h+=`<p class="sub">근거 문구 — 매파: ${(L.hawk||[]).map(esc).join(", ")||"없음"} / 비둘기: ${(L.dove||[]).map(esc).join(", ")||"없음"}</p>`;
-  if((L.added||[]).length||(L.removed||[]).length)h+=`<details class="info"><summary>ⓘ 직전 성명 대비 바뀐 문장</summary><div class="exp"><ul>${(L.added||[]).map(x=>`<li class="add">＋ ${esc(x)}</li>).join("")}${(L.removed||[]).map(x=>`<li class="rem">－ ${esc(x)}</li>).join("")}</ul></div></details>`;
-  h+='<div class="wrap"><table><tr><th>날짜</th><th>결정</th><th>범위</th><th>뉘앙스</th></tr>'+f.statements.map(x=>{const t=tone(x.score);return`<tr><td>${x.date}</td><td>${x.decision}</td><td>${x.range||"-"}</td><td><span class="badge ${t[1]}">${t[0]} ${x.score>0?"+":""}${x.score}</span></td></tr>`}).join("")+'</table></div>';
-  if((f.speeches||[]).length)h+='<h3 style="margin-top:14px">최근 연설·의회 증언</h3><div class="wrap"><table><tr><th>날짜</th><th>발언자</th><th class="l">제목</th><th>뉘앙스</th></tr>'+f.speeches.map(x=>{const t=tone(x.score);return`<tr><td>${x.date}</td><td>${esc(x.who)}</td><td class="l"><a class="lk" href="${x.url}" target="_blank" rel="noopener">${esc(x.title)}</a> <small>${x.kind}</small></td><td><span class="badge ${t[1]}">${t[0]}</span></td></tr>`}).join("")+'</table></div>';
-  h+='<p class="sub" style="margin-top:8px">연준 공식 사이트의 영어 원문을 문구 사전으로 점수화한 근사치입니다.</p></div>';
   b.insertAdjacentHTML("afterbegin",h);
 }
 
 function renderRates(){
   const sec=[...document.querySelectorAll("#root details.sec")].find(x=>x.querySelector(".st").textContent==="국채 금리"),b=sec&&sec.querySelector(".body");if(!b)return;
-  const old=b.querySelector(".rt");if(old)old.remove();const f=EXD&&EXD.fed&&EXD.fed.statements&&EXD.fed.statements[0];
-  const row=(nm,k)=>{const s=D.series[k];if(!s||s.points.length<2)return null;const p=s.points,l=p[p.length-1][1],pv=p[p.length-2][1],m=p[Math.max(0,p.length-22)][1];return{nm,l,d1:(l-pv)*100,d1m:(l-m)*100,dt:p[p.length-1][0]}};
-  const ef=row("실효 연방기금금리(EFFR)","effr"),rows=[["6개월물","tb6m"],["1년물","us1y"],["2년물","us2y"],["10년물","us10y"],["30년물","us30y"]].map(a=>row(a[0],a[1])).filter(Boolean),base=ef?ef.l:null;
-  const bp=v=>(v>0?"+":"")+v.toFixed(0)+"bp",c=v=>v>=0?"up":"dn";
-  let h='<div class="blk rt"><h3>미국 기준금리와 국채 금리 한눈에</h3><div class="wrap"><table><tr><th></th><th>금리(%)</th><th>기준금리 대비</th><th>전일</th><th>1개월</th></tr>';
-  if(f&&f.range)h+=`<tr><td><b>기준금리 (FOMC 목표범위)</b><br><small>${f.date} ${f.decision}</small></td><td colspan="4"><b>${f.range}%</b></td></tr>`;
-  h+=[ef,...rows].filter(Boolean).map(r=>`<tr><td>${r.nm}<br><small>${r.dt}</small></td><td><b>${r.l.toFixed(2)}</b></td><td class="${base==null||r===ef?"":c(r.l-base)}">${base==null||r===ef?"-":bp((r.l-base)*100)}</td><td class="${c(r.d1)}">${bp(r.d1)}</td><td class="${c(r.d1m)}">${bp(r.d1m)}</td></tr>`).join("");
-  h+='</table></div></div>';
-  b.insertAdjacentHTML("afterbegin",h);
+  const old=b.querySelector(".rt");if(old)old.remove();
+  b.insertAdjacentHTML("afterbegin",'<div class="blk rt"><h3>미국 기준금리와 국채 금리</h3></div>');
 }
 
 function renderProxy(m){
@@ -350,8 +337,7 @@ let SIG="";
 function load(){return Promise.all([jf("data.json"),jf("market.json").catch(()=>null),jf("extra.json").catch(()=>null)]).then(([d,m,x])=>{
   D=d;D.series=Object.assign({},d.series,m?m.series:{},x?x.series:{});EXD=x;SIG=d.updated+"|"+(m?m.updated:"");
   document.getElementById("upd").textContent="마지막 갱신 "+d.updated+" (한국시간)";
-  const t=m?"마지막 갱신 "+m.updated+" (한국시간)":"아직 데이터가 없습니다.";
-  ["upd2","upd3"].forEach(k=>document.getElementById(k).textContent=t);
+  ["upd2","upd3"].forEach(k=>{const el=document.getElementById(k);if(el)el.textContent="마지막 갱신 "+d.updated+" (한국시간)"});
   build();renderProxy(m);renderCycle();
 }).catch(()=>{document.getElementById("upd").textContent="데이터를 불러오지 못했습니다."})}
 
@@ -370,21 +356,7 @@ function renderCycle(){
 
 load();
 
-const REPO="efiltsew-cmd/Economic_macro_site",TK="gh_refresh_token",POLL=15000;
-const say=t=>{document.getElementById("rst").textContent=t};
-const gt=()=>{try{return localStorage.getItem(TK)||""}catch(e){return ""}};
-document.getElementById("rset").addEventListener("click",()=>{
-  if(gt()&&confirm("저장된 토큰을 삭제할까요?")){localStorage.removeItem(TK);say("토큰을 삭제했습니다.");return}
-  const t=prompt("GitHub 토큰(github_pat_...)을 붙여넣으세요.");
-  if(t&&t.trim()){localStorage.setItem(TK,t.trim());say("토큰을 저장했습니다.")}
-});
-document.getElementById("rload").addEventListener("click",async()=>{
-  say("불러오는 중…");await load();
-  if(window.__loadC)window.__loadC();if(window.__loadU)await window.__loadU();if(window.__loadK)await window.__loadK();if(window.__loadF)await window.__loadF();
-  say("최신 데이터를 불러왔습니다.");
-});
-
-// 탭 전환 제어
+// 상단 탭 네비게이션 및 서브탭 전환 이벤트 리스너 복구
 const tabs=document.getElementById("tabs"),subtabs=document.getElementById("subtabs"),subtabs2=document.getElementById("subtabs2"),gctl=document.getElementById("gctl");
 tabs.addEventListener("click",e=>{
   const btn=e.target.closest("button");if(!btn)return;const t=btn.dataset.t;
@@ -397,17 +369,23 @@ tabs.addEventListener("click",e=>{
   else if(t==="usm") { document.getElementById("v-us").hidden=false; gctl.hidden=true; window.__loadU?.(); }
   else if(t==="krm") { document.getElementById("v-kth").hidden=false; gctl.hidden=true; window.__loadK?.(); }
 });
+
 subtabs.addEventListener("click",e=>{
   const btn=e.target.closest("button");if(!btn)return;const t=btn.dataset.t;
   subtabs.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===btn));
-  document.getElementById("v-us").hidden=t!=="us";document.getElementById("v-sector").hidden=t!=="sector";document.getElementById("v-flow").hidden=t!=="flow";
-  if(t==="flow"&&window.__loadF)window.__loadF();
+  document.getElementById("v-us").hidden=t!=="us";
+  document.getElementById("v-sector").hidden=t!=="sector";
+  document.getElementById("v-flow").hidden=t!=="flow";
 });
+
 subtabs2.addEventListener("click",e=>{
   const btn=e.target.closest("button");if(!btn)return;const t=btn.dataset.t;
   subtabs2.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b===btn));
-  document.getElementById("v-kflow").hidden=t!=="kflow";document.getElementById("v-kth").hidden=t!=="kth";
+  document.getElementById("v-kflow").hidden=t!=="kflow";
+  document.getElementById("v-kth").hidden=t!=="kth";
 });
+
+document.getElementById("rload").addEventListener("click",async()=>{load()});
 </script>
 
 <!-- 미국 증시 및 한국 증시 캔들 차트 연동 스크립트 -->
@@ -469,6 +447,7 @@ $(C.root).addEventListener("click",e=>{
 });
 
 window[C.loader]=()=>fetch(C.json+"?"+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{U=d;$(C.upd).textContent="마지막 갱신 "+d.updated+" (한국시간)";show(openSet())}).catch(()=>{$(C.upd).textContent="데이터가 없습니다."});
+window[C.loader]();
 }
 
 stockTab({root:"usroot",note:"usnote",upd:"upd4",json:"us.json",loader:"__loadU",dec:2,cur:"$",lab:(x,e)=>`<b>${x.t}</b>${e?' <span class="tg">ETF</span>':""}<span>${x.n||""}</span>`,nt:U=>"기준일 "+U.asof+" (미국 장마감) · 캔들 차트",sub:"ETF 보유 비중 상위 10종목 · 행을 누르면 캔들 차트가 열립니다."});
