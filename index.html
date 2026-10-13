@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>매크로 지표</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#f2f5f7;--ink:#15232e;--mute:#5b6b78;--line:#d3dce3;--a:#0b7a85;--b:#c2800f}
+@media (prefers-color-scheme:dark){:root{--bg:#101b24;--ink:#e6edf2;--mute:#8fa1ae;--line:#26384a;--a:#4fc3cf;--b:#e5a93d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Noto Sans KR",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:760px;margin:0 auto;padding:24px 16px 56px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+h1{font-size:26px;margin:0;font-weight:700}
+.upd{color:var(--mute);font-size:13px;margin:2px 0 0}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:none;border:0;color:var(--mute);padding:6px 12px;font:inherit;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--a);outline-offset:-2px}
+h2{font-size:19px;margin:36px 0 0;font-weight:700}
+.blk{border-top:1px solid var(--line);padding:16px 0 4px;margin-top:12px}
+h3{font-size:14px;margin:0 0 8px;font-weight:500;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:6px}
+.chip{display:flex;align-items:baseline;gap:6px;font-size:13px}
+.chip i{width:10px;height:3px;background:var(--a);align-self:center}
+.chip.c1 i{background:var(--b)}
+.chip b{font-size:20px;font-weight:700}
+.chip small{color:var(--mute)}
+.cv{position:relative;height:190px}
+.err{color:#b5443b}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div><h1>매크로 지표</h1><p class="upd" id="upd">불러오는 중…</p></div>
+  <div class="seg" id="seg">
+    <button data-r="1">1년</button><button data-r="3" aria-pressed="true">3년</button><button data-r="5">5년</button>
+  </div>
+</header>
+<div id="root"></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const SECTIONS=[
+["금리",[["미국·한국 기준금리",["us_rate","kr_rate"]]]],
+["환율",[["원/달러",["usdkrw"]],["원/100엔",["jpykrw"]],["달러/엔",["usdjpy"]]]],
+["물가 (전년 대비)",[["CPI · 근원 CPI",["cpi","core_cpi"]],["PPI",["ppi"]],["PCE · 근원 PCE",["pce","core_pce"]]]],
+["고용",[["비농업 고용 증감 (전월 대비)",["nfp"],"bar"],["실업률",["unemp"]]]],
+["소비 (전월 대비)",[["소매판매 · 코어 소매판매",["retail","core_retail"]]]],
+["성장",[["GDP 성장률 · GDPNow",["gdp","gdpnow"]]]]
+];
+let D,range=3;const charts=[];
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=(v,u)=>v.toLocaleString("ko-KR",{maximumFractionDigits:2})+(u==="%"?"%":" "+u);
+const cutoff=()=>{const d=new Date();d.setFullYear(d.getFullYear()-range);return d.toISOString().slice(0,10)};
+function draw(cv,keys,type){
+  const co=cutoff(),labs=new Set();
+  const ds=keys.map((k,i)=>{const x=D.series[k];if(!x)return null;
+    const m=new Map(x.points.filter(p=>p[0]>=co));m.forEach((_,d)=>labs.add(d));
+    return{label:x.name,m,color:css(i?"--b":"--a")}}).filter(Boolean);
+  const L=[...labs].sort();
+  charts.push(new Chart(cv,{type:type||"line",
+    data:{labels:L,datasets:ds.map(d=>({label:d.label,data:L.map(l=>d.m.has(l)?d.m.get(l):null),
+      borderColor:d.color,backgroundColor:d.color,borderWidth:1.8,pointRadius:0,spanGaps:true}))},
+    options:{maintainAspectRatio:false,animation:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,color:css("--mute")}},
+              y:{grid:{color:css("--line")},ticks:{color:css("--mute")}}}}}));
+}
+function render(){
+  charts.splice(0).forEach(c=>c.destroy());
+  const root=document.getElementById("root");root.innerHTML="";
+  for(const[sec,blocks]of SECTIONS){
+    const s=document.createElement("section");s.innerHTML=`<h2>${sec}</h2>`;
+    for(const[title,keys,type]of blocks){
+      const b=document.createElement("div");b.className="blk";
+      b.innerHTML=`<h3>${title}</h3><div class="chips">`+keys.map((k,i)=>{
+        const x=D.series[k];if(!x)return`<span class="chip err">${k}: 수집 실패</span>`;
+        const l=x.points[x.points.length-1];
+        return`<span class="chip c${i}"><i></i>${x.name} <b>${fmt(l[1],x.unit)}</b> <small>${l[0]}</small></span>`}).join("")
+        +`</div><div class="cv"><canvas></canvas></div>`;
+      s.appendChild(b);draw(b.querySelector("canvas"),keys,type);
+    }
+    root.appendChild(s);
+  }
+}
+document.getElementById("seg").addEventListener("click",e=>{
+  const r=e.target.dataset.r;if(!r)return;range=+r;
+  document.querySelectorAll("#seg button").forEach(x=>x.setAttribute("aria-pressed",x===e.target));
+  render();
+});
+fetch("data.json?"+Date.now()).then(r=>r.json()).then(d=>{
+  D=d;document.getElementById("upd").textContent="마지막 갱신 "+d.updated+" (한국시간)";render();
+}).catch(()=>{document.getElementById("upd").textContent="데이터를 불러오지 못했습니다. 잠시 후 새로고침해 주세요."});
+</script>
+</body>
+</html>
