@@ -1,7 +1,7 @@
 name: daily-update
 on:
   schedule:
-    - cron: "30 20 * * *"
+    - cron: "30 20 * * *"   # 한국시간 05:30 (실행 지연을 감안해 6시 전에 완료)
   workflow_dispatch:
 permissions:
   contents: write
