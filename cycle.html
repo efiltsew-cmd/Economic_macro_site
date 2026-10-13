@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>경기 사이클 · 섹터 분석</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#0a1017;--panel:#111a24;--line:#1e2c3a;--ink:#e8eef3;--mute:#8497a8;--a:#4fc3cf;--b:#e5a93d;--up:46,160,110;--dn:224,88,76}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Noto Sans KR",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+main{max-width:860px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:27px;margin:0;font-weight:700;letter-spacing:-.02em}
+.upd{color:var(--mute);font-size:13px;margin:3px 0 4px}
+.nav a{color:var(--a);font-size:13px;text-decoration:none}
+h2{font-size:18px;margin:30px 0 10px;font-weight:700}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:620px){.two{grid-template-columns:1fr}}
+.panel h3{font-size:14px;margin:0 0 2px;font-weight:700}
+.sub{color:var(--mute);font-size:12px;margin:0 0 10px}
+.bar{display:grid;grid-template-columns:44px 1fr 52px;gap:8px;align-items:center;font-size:13px;margin:6px 0}
+.bar .t{height:10px;background:var(--bg);border-radius:5px;position:relative;overflow:hidden}
+.bar .f{position:absolute;top:0;bottom:0;border-radius:5px}
+.bar.best{font-weight:700}
+.bar.best b{color:var(--a)}
+.verdict{margin-top:12px;padding:14px 16px;border-radius:12px;background:#0f2a30;border:1px solid #1d4a52;font-size:14px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;width:max-content;margin-bottom:10px}
+.seg button{background:none;border:0;color:var(--mute);padding:6px 12px;font:inherit;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--a);color:#06222a;font-weight:700}
+.heat{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.tile{border-radius:10px;padding:10px 12px;min-height:74px}
+.tile b{display:block;font-size:20px}.tile span{font-size:12px;color:#dfe8ee}
+.tile small{display:block;font-size:11px;opacity:.75}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 6px;text-align:center;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mute);font-weight:500;vertical-align:bottom}
+.tag{display:inline-block;font-size:10px;border-radius:6px;padding:0 5px;margin:0 1px;color:#06222a}
+.tag.e{background:var(--b)}.tag.m{background:var(--a)}
+.wrap{overflow-x:auto}
+.ind td:last-child{text-align:left;color:var(--mute);font-size:12px}
+.pill{display:inline-block;border-radius:8px;padding:1px 8px;background:var(--line)}
+.legend p{margin:4px 0;font-size:13px;color:#c4d0da}.legend strong{color:var(--ink)}
+.foot{color:var(--mute);font-size:12px;margin-top:22px}
+</style>
+</head>
+<body>
+<main>
+<h1>경기 사이클 · 섹터 분석</h1>
+<p class="upd" id="upd">불러오는 중…</p>
+<div class="nav"><a href="./">← 매크로 지표</a> · <a href="https://finviz.com/map.ashx" target="_blank" rel="noopener">Finviz 히트맵 ↗</a></div>
+<div id="root"></div>
+<p class="foot">※ 규칙으로 계산한 근사치이며 피델리티의 공식 판단이 아닙니다. 과거 패턴이 반복된다는 보장은 없고, 투자 권유가 아닙니다. 투자 판단과 책임은 본인에게 있습니다.</p>
+</main>
+<script>
+const SYM={2:"++",1:"+",0:"","-1":"−","-2":"−−"};
+const PER=[["d1","1일",3],["w1","1주",5],["m1","1개월",8],["m3","3개월",12],["m6","6개월",20]];
+const DESC=[["초기","침체에서 급격히 회복하며 성장이 가속되는 국면"],["중간","가장 길고 완만하게 성장하는 국면"],["후기","성장은 플러스지만 둔화되고 과열 우려가 커지는 국면"],["침체","경제활동이 위축되고 이익이 줄며 신용이 경색되는 국면"]];
+let D,per="m3";
+const col=(v,mx)=>{const a=Math.min(1,Math.abs(v)/mx);return`rgba(${v>=0?"var(--up)":"var(--dn)"},${(.18+.7*a).toFixed(2)})`};
+const sg=(v,d=1)=>(v>0?"+":"")+v.toFixed(d)+"%";
+function bars(sc,best,signed){
+  const mx=signed?Math.max(1,...sc.map(Math.abs)):100;
+  return sc.map((v,i)=>{
+    const w=Math.abs(v)/mx*(signed?50:100);
+    const st=signed?`left:${v>=0?50:50-w}%;width:${w}%;background:${v>=0?"var(--a)":"#c0584c"}`:`left:0;width:${w}%;background:var(--a)`;
+    return`<div class="bar${i===best?" best":""}"><span>${DESC[i][0]}</span><div class="t"><div class="f" style="${st}"></div></div><b>${signed?v.toFixed(2):v+"%"}</b></div>`}).join("");
+}
+function html(D,per){
+  const E=D.econ,M=D.market,pi=PER.find(p=>p[0]===per);
+  const verdict=E.best===M.best
+    ?`경제 지표와 섹터 흐름이 모두 <b>${DESC[E.best][0]} 국면</b>을 가리킵니다.`
+    :`경제 지표는 <b>${DESC[E.best][0]} 국면</b>, 섹터 흐름은 <b>${DESC[M.best][0]} 국면</b>에 가깝습니다. 두 신호가 엇갈리면 국면 전환기일 수도 있지만, 단정하지 말고 추이를 지켜보세요.`;
+  const sec=[...D.sectors].sort((a,b)=>b.ret[per]-a.ret[per]);
+  return`<h2>현재 위치</h2><div class="two">
+<div class="panel"><h3>경제 지표 기준</h3><p class="sub">5개 지표가 가리키는 국면 득표율</p>${bars(E.scores,E.best,false)}</div>
+<div class="panel"><h3>섹터 흐름 기준</h3><p class="sub">최근 섹터 강약이 피델리티 국면별 패턴과 맞는 정도 (−1~+1)</p>${bars(M.scores,M.best,true)}</div></div>
+<div class="verdict">${verdict}</div>
+<h2>판단 근거</h2><div class="panel wrap"><table class="ind"><tr><th>지표</th><th>현재</th><th>시사</th><th>기준</th></tr>`
++E.ind.map(x=>`<tr><td>${x.name}</td><td>${x.val}</td><td><span class="pill">${DESC[x.v][0]}</span></td><td>${x.why}</td></tr>`).join("")
++`</table></div>
+<h2>섹터 히트맵</h2><div class="seg" id="per">${PER.map(p=>`<button data-p="${p[0]}" aria-pressed="${p[0]===per}">${p[1]}</button>`).join("")}</div>
+<div class="heat">${sec.map(s=>`<div class="tile" style="background:${col(s.ret[per],pi[2])}"><span>${s.name} · ${s.etf}</span><b>${sg(s.ret[per])}</b><small>S&amp;P500 대비 3개월 ${sg(s.rel.m3)}</small></div>`).join("")}</div>
+<h2>피델리티 국면별 섹터 패턴</h2><div class="panel wrap"><table><tr><th></th>`
++DESC.map((d,i)=>`<th>${d[0]}<br>${E.best===i?'<span class="tag e">경제</span>':""}${M.best===i?'<span class="tag m">섹터</span>':""}</th>`).join("")
++`<th>3개월 상대</th><th>6개월 상대</th></tr>`
++D.sectors.map(s=>`<tr><td>${s.name}</td>`+s.w.map(w=>`<td style="background:${w===0?"transparent":col(w,2.4)}">${SYM[w]}</td>`).join("")+`<td>${sg(s.rel.m3)}</td><td>${sg(s.rel.m6)}</td></tr>`).join("")
++`</table><p class="sub" style="margin-top:10px">++ / + : 해당 국면에서 시장보다 높은 수익률 확률이 매우 높음 / 높음 · −− / − : 낮은 확률 · 빈칸: 뚜렷한 상관 없음. 상대 수익률은 S&amp;P500(SPY) 대비 %p입니다.</p></div>
+<h2>국면 설명</h2><div class="panel legend">${DESC.map(d=>`<p><strong>${d[0]}</strong> ${d[1]}</p>`).join("")}</div>`;
+}
+function show(){document.getElementById("root").innerHTML=html(D,per);
+  document.getElementById("per").addEventListener("click",e=>{if(e.target.dataset.p){per=e.target.dataset.p;show()}})}
+if(typeof document!=="undefined"){
+  fetch("cycle.json?"+Date.now()).then(r=>{if(!r.ok)throw 0;return r.json()}).then(d=>{
+    D=d;document.getElementById("upd").textContent="마지막 갱신 "+d.updated+" (한국시간)";show()
+  }).catch(()=>{document.getElementById("upd").textContent="아직 데이터가 없습니다. GitHub Actions에서 cycle-update를 한 번 실행해 주세요."});
+}
+</script>
+</body>
+</html>
